@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Space Panic!!</title>
+    <script type="text/javascript" src="js/build/enchant.js"></script>
+    <style>
+        body {
+            background-color: #34355f;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        enchant(); //おまじない
+        window.onload = function () {
+            var game = new Game(320, 320); //Gameオブジェクトを320×320で生成
+
+            game.preload("icon0.png", "bg_1.png", "plane.png", "bg_2.png", "title_space_panic.png", "beem.mp3",
+             "icon2.png", "plane_shields.png", "fire.png", "bgm1.mp3","zanki.theme.mp3","kakudai.theme.mp3","gensoku.theme.mp3",
+             "kasoku.theme.mp3","baria.theme.mp3","highscore.mp3");
+            game.fps = 15;
+            game.highscore = 0
+            game.onload = function () { //Gameオブジェクトができたら以下を起動
+
+
+                // タイトルシーンを作り、返す関数
+                var createTitleScene = function () {
+                    var scene = new Scene();  // 新しいシーンを作る
+
+                    //タイトル画面
+                    var bg = new Sprite(320, 320)
+                    bg.image = game.assets["bg_2.png"]
+                    bg.scaleY = 1;
+                    bg.y = 0
+                    scene.addChild(bg);
+
+                    //ゲーム画面、終了画面
+                    var bg2 = new Sprite(300, 62)
+                    bg2.image = game.assets["title_space_panic.png"]
+                    bg2.x = 10
+                    bg2.y = 40
+                    scene.addChild(bg2);
+
+                    //タイトルのラベル
+                    var label = new Label("");
+                    label.font = "16px impact"
+                    label.color = "white"
+                    label.text = "TAP TO START";
+                    label.x = 115
+                    label.y = 160
+                    scene.addChild(label)
+
+                    scene.addEventListener(Event.TOUCH_START, function (e) {
+                        // シーンにタッチイベントを設定
+                        //現在表示しているシーンをゲームシーンに置き換えます
+                        game.replaceScene(createGameScene());
+                    });
+                    // この関数内で作ったシーンを呼び出し元に返します(return)
+                    return scene;
+                };
+
+                // ゲームシーンを作り、返す関数
+                var createGameScene = function () {
+                    var scene = new Scene();        // 新しいシーンを作る
+                    var label = new Label('ゲームシーン');        // 新しいラベル(文字)を作る
+                    scene.addChild(label);          // シーンにラベルに追加
+                    scene.backgroundColor = 'rgba(255, 200, 0, 1)';  // シーンの背景色を設定
+                    game.count = 0;//スコアを初期化
+                    var bgm = game.assets['bgm1.mp3'];
+                    bgm.play();
+                    bgm.src.loop = true;
+
+                    //ここにメインの処理を書く
+                    game.count = 0
+                    game.atatta = 0
+                    game.bariastart = 0
+                    //バリア
+                    var baria;
+
+                    //背景
+                    var bg = new Sprite(320, 320)
+                    bg.backgroundColor = "rgb(0,200,255)";
+                    bg.image = game.assets["bg_1.png"]
+                    bg.scaleY = 1.9;
+                    bg.scaleX = 1.9;
+                    bg.y = 120
+                    bg.x = 0
+                    scene.addChild(bg);
+
+                    //スコア
+                    var label_time = new Label("");
+                    scene.addChild(label_time)
+                    label_time.font = "16px impact"
+                    label_time.color = "white"
+                    label_time.text = "score : " + game.count;
+                    label_time.y = 0;
+                    //ハイスコア
+                    var label_highscore = new Label("");
+                    scene.addChild(label_highscore)
+                    label_highscore.font = "16px impact"
+                    label_highscore.color = "white"
+                    label_highscore.text = "highscore : " + game.highscore;
+                    label_highscore.y = 0;
+                    label_highscore.x = 215;
+                    //ビーム
+                    game.baria_hantei = 0
+                    game.hole_size = 0
+                    game.beem_speed = 0
+                    game.beem_hindo = 0
+                    //飛行機
+                    var plane = new Sprite(48, 48);
+                    plane.image = game.assets["plane.png"];
+                    plane.x = 80;
+                    plane.y = 160;
+                    plane.touchx = plane.x;
+                    plane.touchy = plane.y;
+                    plane.frame = 0;
+                    plane.speed = 15;
+                    scene.addChild(plane);
+
+                    //背景に対するタッチしたら動く
+                    bg.addEventListener(Event.TOUCH_START, function (e) {
+                        //タッチ操作
+                        plane.touchx = e.x - 24;
+                        plane.touchy = e.y - 24;
+                    })
+
+                    //飛行機に対する常に動く
+                    plane.addEventListener("enterframe", function () {
+                        //飛行機の操作
+                        var kyori_x = plane.touchx - plane.x;
+                        var kyori_y = plane.touchy - plane.y;
+                        var kakudo = Math.atan2(kyori_y, kyori_x);
+                        //直線移動
+                        if (Math.abs(kyori_x) > 16 || Math.abs(kyori_y) > 16) {
+                            plane.x = Math.round(plane.x + Math.cos(kakudo) * plane.speed)
+                            plane.y = Math.round(plane.y + Math.sin(kakudo) * plane.speed);
+                        }
+                        //向きの修正
+                        if (Math.abs(kyori_x) > 10 || Math.abs(kyori_y) > 10) {
+                            this.rotation = kakudo / Math.PI * 180 + 90
+                        }
+                    })
+
+                    //ビームの生成
+                    game.addBeem = function (x, y, speed, angle,) {
+                        var beem = new Sprite(16, 16);
+                        beem.image = game.assets["icon0.png"];
+                        beem.x = x
+                        beem.y = y
+                        // beem.turn = 0;
+                        beem.speed = speed;
+                        beem.angle = angle;
+                        //addはビームを加える（引っ付ける）
+                        scene.addChild(beem);
+                        //縦横の処理
+                        if (beem.angle == 0) {
+                            beem.x = 320;
+                            beem.frame = 50;
+                        } else {
+                            beem.y = 0;
+                            beem.frame = 60;
+                        }
+                        //ビームに対して常に動く
+                        beem.addEventListener("enterframe", function () {
+                            // beem.rotation = beem.turn;
+                            // beem.turn = beem.turn + 100;
+
+                            if (beem.angle == 0) {
+                                beem.x -= beem.speed;
+                                if (beem.x <= 0) {
+                                    //removeは除く（消す）
+                                    scene.removeChild(beem);
+                                }
+                            } else {
+                                beem.y += beem.speed;
+                                if (beem.y >= 320) {
+                                    scene.removeChild(beem);
+                                }
+                            }
+
+                            //ビームに当たった時
+                            if (plane.within(beem, 16)) {
+                                scene.removeChild(beem);
+                                //バリアがなければ被弾させる
+                                if (game.baria_hantei == 0) {
+                                    tamaniataru()
+                                }
+                            }
+                        })
+                    };
+
+                    //アイテム
+                    game.additem = function (x, y, kinds) {
+                        var item_list = [8, 16, 29, 30, 32] //バリア8、加速16、残機増加29、穴の拡大30、ビームの減速32
+                        var bgm_list = ["baria.theme.mp3","kasoku.theme.mp3","zanki.theme.mp3","kakudai.theme.mp3","gensoku.theme.mp3"]
+                        var item = new Sprite(16, 16);
+                        item.image = game.assets["icon2.png"];
+                        item.x = x
+                        item.y = y
+                        item.frame = item_list[kinds]
+                        scene.addChild(item);
+
+                        //アイテムに対する常に動く関数
+                        item.addEventListener("enterframe", function () {
+                            //アイテムに当たった時
+                            if (plane.within(item, 16)) {
+                                game.assets[bgm_list[kinds]].play();
+                                scene.removeChild(item);
+
+                                if (kinds == 0) {
+                                    if (game.baria_hantei == 1) {
+                                        scene.removeChild(baria);
+                                    }
+                                    game.addbaria()
+                                    game.baria_hantei = 1
+                                    game.bariastart = game.count
+
+                                } else if (kinds == 1) {
+                                    if (game.kasoku_hantei == 1) {
+                                        scene.removeChild(kasoku);
+                                    }
+                                    game.addkasoku()
+                                    game.kasoku_hantei = 1
+                                    game.kasokustart = game.count
+
+                                } else if (kinds == 2) {//残機追加
+                                    if (plane.frame != 0) {
+                                        plane.frame--
+                                    }
+
+                                } else if (kinds == 3) {
+                                    game.holestart = game.count
+                                    game.hole_hantei = 1
+                                    game.hole_size = 10
+
+                                } else if (kinds == 4) {
+                                    game.beemstart = game.count
+                                    game.beem_hantei = 1
+                                    game.beem_speed = -2
+                                    game.beem_hindo = 5
+                                }
+                            }
+                        })
+                    };
+
+                    //0,バリア
+                    game.addbaria = function () {
+                        baria = new Sprite(64, 64);
+                        baria.image = game.assets["plane_shields.png"]
+                        baria.frame = 0;
+                        baria.rotation = 90
+                        baria.x = plane.x - 8
+                        baria.y = plane.y - 8
+                        scene.addChild(baria)
+
+                        baria.addEventListener("enterframe", function () {
+                            baria.frame++;
+                            baria.x = plane.x - 8
+                            baria.y = plane.y - 8
+                            //75カウントたったらバリアを消す
+                            if (game.baria_hantei == 1 && game.bariastart < game.count - 75) {
+                                scene.removeChild(baria);
+                                game.baria_hantei = 0
+                            }
+                        })
+                    }
+
+                    //1,加速
+                    game.addkasoku = function () {
+                        kasoku = new Sprite(100, 100);
+                        kasoku.image = game.assets["fire.png"]
+                        kasoku.frame = 0;
+                        kasoku.rotation = 0
+                        kasoku.x = plane.x - 25
+                        kasoku.y = plane.y - 25
+                        plane.speed = 30
+                        //後ろ、下につける(加速のエフェクトを,飛行機の下に)
+                        scene.insertBefore(kasoku, plane)
+
+                        kasoku.addEventListener("enterframe", function () {
+                            //54以降は透明があるため53の後を0に戻す
+                            if (kasoku.frame >= 53) {
+                                kasoku.frame = 0
+                            }
+                            kasoku.frame++;
+                            kasoku.x = plane.x - 25
+                            kasoku.y = plane.y - 25
+                            if (game.kasoku_hantei == 1 && game.kasokustart < game.count - 75) {
+                                plane.speed = 15
+                                scene.removeChild(kasoku);
+                                game.kasoku_hantei = 0
+                            }
+                        })
+                    }
+
+                    //弾に当たった時
+                    function tamaniataru() {
+                        //二重に被弾しないようにするため
+                        if (game.atatta < game.count - 2) {
+                            game.assets["beem.mp3"].play();
+                            game.atatta = game.count
+                            plane.frame++
+                            //4回当たったらゲームオーバーの処理
+                            if (plane.frame >= 4) {
+                                bgm.stop()
+                                game.replaceScene(createGameoverScene());
+                            }
+                        }
+                    }
+
+                    //初期値
+                    var hole_size = 9
+                    var beem_speed = 7
+                    var beem_hindo = 25
+                    scene.addEventListener("enterframe", function () {
+                        game.count++;
+                        //ゲームスコアはゲームカウントの3分の2
+                        game.score = Math.floor(game.count / 3 * 2)
+                        label_time.text = "score : " + game.score;
+
+                        //難易度調整
+                        if (game.score <= 100) {
+                            hole_size = 9 + game.hole_size
+                            beem_speed = 7 + game.beem_speed
+                            beem_hindo = 25 + game.beem_hindo
+
+                        } else if (game.score <= 200) {
+                            hole_size = 7 + game.hole_size
+
+                        } else if (game.score <= 300) {
+                            hole_size = 7 + game.hole_size
+                            beem_speed = 10 + game.beem_speed
+
+                        } else if (game.score <= 400) {
+                            hole_size = 7 + game.hole_size
+                            beem_speed = 7 + game.beem_speed
+                            beem_hindo = 18 + game.beem_hindo
+
+                        } else if (game.score <= 500) {
+                            hole_size = 5 + game.hole_size
+                            beem_hindo = 25 + game.beem_hindo
+
+                        } else if (game.score <= 600) {
+                            hole_size = 5 + game.hole_size
+                            beem_speed = 13 + game.beem_speed
+                            beem_hindo = 23 + game.beem_hindo
+                        }
+
+
+                        //3,穴の拡大
+                        if (game.hole_hantei == 1 && game.holestart < game.count - 200) {
+                            game.hole_hantei = 0
+                            game.hole_size = 0
+                        }
+                        if (game.beem_hantei == 1 && game.beemstart < game.count - 200) {
+                            game.beem_hantei = 0
+                            game.beem_speed = game.beem_speed + 2
+                            game.beem_hindo = game.beem_hindo - 5
+                        }
+                        //ビーム自体と穴の生成
+                        if (game.count % beem_hindo == 0) {
+                            var beem_y = 1;
+                            var beem_x = 1;
+                            var hole = Math.floor(Math.random() * 23);
+                            var angle = Math.floor(Math.random() * 2)
+                            //変数iを作って32未満の間動き続ける
+                            for (var i = 0; i < 32; i++) {
+                                //選ばれたあるビームから9個のビームを消す
+                                //＝選ばれたビーム未満と選ばれたビームから10個目以降のビームを生成する
+                                if (i < hole || i > hole + hole_size) {
+                                    game.addBeem(beem_x, beem_y, beem_speed, angle);
+                                }
+                                beem_y = beem_y + 10
+                                beem_x = beem_x + 10
+                            }
+                        }
+
+                        //アイテムの生成
+                        if (game.count % 50 == 0) {
+                            game.additem(Math.floor(Math.random() * 240) + 40, Math.floor(Math.random() * 240) + 40, Math.floor(Math.random() * 5));//アイテムの切り替え
+                        }
+                    })
+                    return scene;
+                };
+
+                // ゲームオーバーシーンを作り、返す関数
+                var createGameoverScene = function () {
+                    var scene = new Scene();                // 新しいシーンを作る
+                    // 新しいラベル(文字)を作る
+                    var bg = new Sprite(320, 320)
+                    bg.backgroundColor = "rgb(0,200,255)";
+                    bg.image = game.assets["bg_1.png"]
+                    bg.scaleY = 2;
+                    bg.scaleX = 2;
+                    bg.y = 120
+                    bg.x = 0
+                    scene.addChild(bg);
+
+                    var label = new Label("");
+                    label.font = "48px impact"
+                    label.color = "white"
+                    label.text = "GAME OVER";
+                    label.x = 55
+                    label.y = 80
+                    scene.addChild(label)
+
+                    //スコアのラベル
+                    var label_score = new Label("");
+                    label_score.font = "32px impact"
+                    label_score.color = "white"
+                    label_score.text = "SCORE:" + game.score;
+                    label_score.x = 95
+                    label_score.y = 160
+                    scene.addChild(label_score)
+
+                    //ハイスコアの処理
+                    var hightext = 0
+                    if (game.highscore < game.score) {
+                        game.highscore = game.score
+                        hightext = "NEW RECORD!!!"
+                        game.assets["highscore.mp3"].play();
+                    } else {
+                        hightext = "HIGHSCORE:" + game.highscore
+                    }
+
+                    //ハイスコアのラベル
+                    var label_highscore = new Label("");
+                    label_highscore.font = "32px impact"
+                    label_highscore.color = "white"
+                    label_highscore.text = hightext;
+                    label_highscore.x = 60
+                    label_highscore.y = 200
+                    scene.addChild(label_highscore)
+
+                    // シーンの背景色を設定
+                    scene.addEventListener(Event.TOUCH_START, function (e) {
+                        // シーンにタッチイベントを設定
+                        //現在表示しているシーンを外し、直前のシーンを表示します
+                        // game.popScene();
+                        game.replaceScene(createTitleScene());
+                    });
+                    // この関数内で作ったシーンを呼び出し元に返します(return)
+                    return scene;
+                };
+
+                // ゲームのSceneをタイトルシーンに置き換えます
+                game.replaceScene(createTitleScene());
+            }
+            game.start();//ゲーム開始
+
+        }
+    </script>
